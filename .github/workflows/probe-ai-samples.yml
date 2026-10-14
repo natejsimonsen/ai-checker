@@ -1,0 +1,15 @@
+name: probe-ai-samples
+on: [push]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          for ds in awsaf49/sonics; do
+            echo "== $ds"; curl -s "https://huggingface.co/api/datasets/$ds" | head -c 600; echo
+            curl -s "https://huggingface.co/api/datasets/$ds/tree/main" | head -c 1500; echo
+          done
+          echo "== suno page"; curl -s -o /dev/null -w "%{http_code}\n" -A "Mozilla/5.0" https://suno.com/song/0338ca03-a33a-422b-801a-fbca0e826a28
+          curl -sI -A "Mozilla/5.0" https://cdn1.suno.ai/0338ca03-a33a-422b-801a-fbca0e826a28.mp3 | head -5
+          curl -sI https://cdn2.suno.ai/0338ca03-a33a-422b-801a-fbca0e826a28.mp3 | head -3
+          curl -sI https://audiopipe.suno.ai/?item_id=0338ca03-a33a-422b-801a-fbca0e826a28 | head -3
