@@ -1,0 +1,74 @@
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      links:
+        description: "Space-separated Spotify track links to run through the detector"
+        required: false
+        default: ""
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Detector + parser unit tests
+        run: ./gradlew :core:test --stacktrace
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: core-test-report
+          path: core/build/reports/tests/
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build debug and release APKs
+        run: ./gradlew :app:assembleDebug :app:assembleRelease --stacktrace
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ai-song-checker-apk
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/release/*.apk
+
+  # Runs the on-device pipeline (with ffmpeg standing in for MediaCodec) on real
+  # Spotify previews, proving the embed scraping still works end to end.
+  spotify-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Ensure ffmpeg
+        run: command -v ffmpeg || (sudo apt-get update && sudo apt-get install -y ffmpeg)
+      - name: Analyse Spotify previews
+        env:
+          LINKS: ${{ github.event.inputs.links }}
+        run: |
+          if [ -z "$LINKS" ]; then
+            # Well-known human-made recordings: expected to score low.
+            LINKS="https://open.spotify.com/track/4PTG3Z6ehGkBFwjybzWkR8 https://open.spotify.com/track/003vvx7Niy0yvhvHt4a68B https://open.spotify.com/track/0VjIjW4GlUZAMYd2vXMi3b https://open.spotify.com/track/7qiZfU4dY1lWllzX7mPBI3"
+          fi
+          ./gradlew -q :core:run --args="$LINKS"

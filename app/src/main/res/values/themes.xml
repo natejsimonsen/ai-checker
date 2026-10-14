@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Compose draws everything; this only sets the window before the first frame. -->
+    <style name="Theme.AiChecker" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
+    <color name="window_background">#FF141218</color>
+    <color name="ic_launcher_background">#FF2A1B4A</color>
+</resources>

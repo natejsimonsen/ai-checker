@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Waveform bars inside a magnifier ring, on the 108dp adaptive-icon grid. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="5"
+        android:pathData="M50,32a18,18 0,1 1,0 36a18,18 0,1 1,0 -36z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:pathData="M63,63L76,76" />
+    <path android:fillColor="#FFC9B6FF" android:pathData="M40,45h4v10h-4z" />
+    <path android:fillColor="#FFC9B6FF" android:pathData="M46,40h4v20h-4z" />
+    <path android:fillColor="#FFC9B6FF" android:pathData="M52,43h4v14h-4z" />
+    <path android:fillColor="#FFC9B6FF" android:pathData="M58,47h4v6h-4z" />
+</vector>
