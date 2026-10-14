@@ -87,4 +87,4 @@ jobs:
           for f in ai/*; do
             ffmpeg -v error -ss 20 -t 30 -i "$f" -ar 44100 -b:a 96k "ai/preview-$(basename "${f%.*}").mp3"
           done
-          ./gradlew -q :core:run --args="$(ls ai/* | tr '\n' ' ')"
+          ./gradlew -q :core:run --args="$(ls "$PWD"/ai/* | tr '\n' ' ')"
