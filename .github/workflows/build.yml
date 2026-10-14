@@ -72,19 +72,19 @@ jobs:
             LINKS="https://open.spotify.com/track/4PTG3Z6ehGkBFwjybzWkR8 https://open.spotify.com/track/003vvx7Niy0yvhvHt4a68B https://open.spotify.com/track/0VjIjW4GlUZAMYd2vXMi3b https://open.spotify.com/track/7qiZfU4dY1lWllzX7mPBI3"
           fi
           ./gradlew -q :core:run --args="$LINKS"
-      # Positive controls: Suno songs (v3.5-v4.5) from the upstream detector's test list, served by
-      # Suno's public CDN. Each is checked as-is and as a 30 s 96 kbps re-encode that mimics a preview.
-      - name: Analyse known AI (Suno) songs
+      # Positive controls: AI songs (Suno + Udio) from the SONICS dataset, checked as-is and as a
+      # 30 s 96 kbps re-encode that mimics a Spotify preview. SONICS was part of the upstream
+      # model's training data, so this guards the pipeline, not the model's generalisation.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Analyse known AI songs (SONICS)
         run: |
-          mkdir -p suno && cd suno
-          for id in 0338ca03-a33a-422b-801a-fbca0e826a28 08ed2d5f-3d1d-4509-ba07-d17e86711a1b \
-                    071b7905-7f6f-431f-8385-8c5b6192dfe2 1d4a774b-341b-479c-8007-a8344102b775 \
-                    11e59acf-b954-46bc-ab43-5f3f097271da; do
-            curl -fsSL --retry 3 -A "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36" \
-              -e "https://suno.com/" -o "$id.mp3" "https://cdn1.suno.ai/$id.mp3" || { echo "skip $id"; rm -f "$id.mp3"; continue; }
-            ffmpeg -v error -ss 30 -t 30 -i "$id.mp3" -ar 44100 -b:a 96k "preview-$id.mp3"
+          pip install -q remotezip
+          if ! python tools/ci/fetch_sonics_samples.py ai 6; then
+            echo "::warning::SONICS unreachable; AI positive controls skipped"; exit 0
+          fi
+          for f in ai/*; do
+            ffmpeg -v error -ss 20 -t 30 -i "$f" -ar 44100 -b:a 96k "ai/preview-$(basename "${f%.*}").mp3"
           done
-          cd ..
-          files=$(ls suno/*.mp3 2>/dev/null | tr '\n' ' ')
-          if [ -z "$files" ]; then echo "::warning::Suno CDN unreachable; AI positive controls skipped"; exit 0; fi
-          ./gradlew -q :core:run --args="$files"
+          ./gradlew -q :core:run --args="$(ls ai/* | tr '\n' ' ')"

@@ -1,9 +1,0 @@
-name: probe-ai-samples
-on: [push]
-jobs:
-  probe:
-    runs-on: ubuntu-latest
-    steps:
-      - run: |
-          curl -s "https://huggingface.co/api/datasets/awsaf49/sonics/tree/main/fake_songs" | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d)); [print(x['type'], x['path'], x.get('size')) for x in d[:15]]"
-          curl -sL "https://huggingface.co/datasets/awsaf49/sonics/resolve/main/test.csv" | head -5
