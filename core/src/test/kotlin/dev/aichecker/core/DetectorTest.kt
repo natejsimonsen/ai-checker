@@ -3,7 +3,6 @@ package dev.aichecker.core
 import dev.aichecker.core.detect.AiMusicDetector
 import dev.aichecker.core.detect.AnalysisException
 import dev.aichecker.core.detect.PcmAudio
-import dev.aichecker.core.detect.Segment
 import dev.aichecker.core.detect.Verdict
 import kotlin.math.PI
 import kotlin.math.sin
@@ -33,12 +32,12 @@ class DetectorTest {
     }
 
     @Test
-    fun verdictRules() {
-        fun segs(vararg p: Float) = p.mapIndexed { i, v -> Segment(i * 5.0, i * 5.0 + 10, v) }
-        assertEquals(Verdict.LIKELY_AI, AiMusicDetector.verdictFor(0.97f, segs(0.9f, 0.95f, 0.99f)))
-        assertEquals(Verdict.LIKELY_HUMAN, AiMusicDetector.verdictFor(0.02f, segs(0.01f, 0.05f, 0.3f)))
-        assertEquals(Verdict.MIXED, AiMusicDetector.verdictFor(0.6f, segs(0.01f, 0.02f, 0.95f, 0.99f)))
-        assertEquals(Verdict.INCONCLUSIVE, AiMusicDetector.verdictFor(0.5f, segs(0.4f, 0.6f, 0.5f)))
-        assertEquals(Verdict.LIKELY_AI, AiMusicDetector.verdictFor(0.9f, emptyList()))
+    fun verdictBands() {
+        assertEquals(Verdict.LIKELY_AI, AiMusicDetector.verdictFor(0.97f))
+        assertEquals(Verdict.LIKELY_AI, AiMusicDetector.verdictFor(0.85f))
+        assertEquals(Verdict.POSSIBLY_AI, AiMusicDetector.verdictFor(0.6f))
+        assertEquals(Verdict.INCONCLUSIVE, AiMusicDetector.verdictFor(0.3f))
+        assertEquals(Verdict.LIKELY_HUMAN, AiMusicDetector.verdictFor(0.15f))
+        assertEquals(Verdict.LIKELY_HUMAN, AiMusicDetector.verdictFor(0.01f))
     }
 }

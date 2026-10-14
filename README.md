@@ -28,19 +28,33 @@ Audio file ───────────────────────
   self-reported test set has 99.9% accuracy and a 0.3% false-positive rate on Suno ≤ v5 / Udio ≤ v1.5.
   The upstream ONNX graph is exactly `sigmoid(w·x + b)`, so the app ships the
   3,585 weights as a 14 KB file and runs them in plain Kotlin. No ML runtime is needed.
-* **Verdict.** The app runs the model on the whole clip and on 10-second windows with a 5-second hop:
-  * **Likely AI**: overall score ≥ 85% (SubmitHub's blocking line) and at least half the windows agree.
-  * **Likely human**: overall score ≤ 15% and at least half the windows agree.
-  * **Mixed / hybrid**: at least a quarter of the windows look AI and at least a quarter look human.
-  * **Inconclusive**: anything else.
+* **Verdict.** Comes from the whole-clip score: **Likely AI** at 85% or above (SubmitHub's blocking line),
+  **Possibly AI / hybrid** from 50%, **Inconclusive** from 15%, and **Likely human** at 15% or below. The app also
+  scores each 10-second window for a timeline, but the model was trained on whole tracks, so
+  those windows are noisy (on AI songs they swing between 0 and 100%). They're shown, but they don't
+  drive the verdict.
 * **Spotify audio.** Spotify's Web API no longer returns previews for new apps
   (since Nov 2024), so the app reads the public embed page, the same one any website
   embedding a Spotify player loads. That page format is undocumented and may change; the parser
   is defensive and CI checks it against live Spotify on every push.
 
+### Measured so far (CI, every push)
+
+| Input | Score |
+|---|---|
+| 4 human hits via live Spotify previews (Rick Astley, The Killers, The Weeknd, Ed Sheeran) | 0.0% each, *Likely human* |
+| 4 full Suno songs + 2 full Udio songs (SONICS dataset) | 99.9–100% |
+| 1 short (33 s) Udio song | 80.6% |
+| Same AI songs as 30 s / 96 kbps preview-style re-encodes: Suno | 99.6–100% |
+| Same, Udio | 94%, 16%, 0.5% (the last clip is only 13 s) |
+
+SONICS was part of the model's training data, so these numbers check the pipeline, not
+the model's accuracy on new songs. The takeaway: Suno is caught reliably even from a preview, while
+Udio's fingerprint fades in short, low-bitrate clips.
+
 ### Known limits
 
-* A preview is only 30 s. Picking the full audio file gives a steadier result.
+* A preview is only 30 s. Picking the full audio file gives a steadier result, especially for Udio.
 * The model only knows the generators it was trained on. Newer ones, heavy mastering,
   re-encoding or re-recorded vocals can hide the fingerprint. A low score is not proof that a human made the track.
 * There's no temporal/structural model yet (SubmitHub runs a second one; see *Next steps*).
@@ -52,7 +66,7 @@ Audio file ───────────────────────
 | `core/` | Pure Kotlin/JVM: DSP, model, Spotify parsing, desktop CLI. Shared by the app and CI. |
 | `app/` | Jetpack Compose app (Material 3, dynamic color, edge-to-edge), API 37 target, min API 29. |
 | `tools/reference/` | Python scripts that export the weights and generate parity fixtures from the upstream torchaudio pipeline. |
-| `.github/workflows/build.yml` | Unit tests, debug + release APK, live Spotify smoke test. |
+| `.github/workflows/build.yml` | Unit tests, debug + release APK, emulator test of the MediaCodec path, live Spotify + known-AI smoke tests. |
 
 Toolchain: AGP 9.4 (built-in Kotlin), Kotlin 2.4, Gradle 9.8, Compose BOM 2026.09, compileSdk/targetSdk 37.
 

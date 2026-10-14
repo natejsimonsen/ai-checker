@@ -22,7 +22,11 @@ class PcmAudio(val samples: FloatArray, val sampleRate: Int) {
     }
 }
 
-enum class Verdict { LIKELY_HUMAN, MIXED, LIKELY_AI, INCONCLUSIVE }
+/**
+ * Bands on the whole-clip probability. 85% matches SubmitHub's blocking line.
+ * POSSIBLY_AI covers partly-AI tracks (AI stems/vocals) and heavily processed AI audio.
+ */
+enum class Verdict { LIKELY_HUMAN, INCONCLUSIVE, POSSIBLY_AI, LIKELY_AI }
 
 data class Segment(val startSeconds: Double, val endSeconds: Double, val aiProbability: Float)
 
@@ -30,7 +34,11 @@ data class AnalysisResult(
     /** Fakeprint-model probability over the whole analysed clip, 0..1. */
     val aiProbability: Float,
     val verdict: Verdict,
-    /** Sliding-window probabilities, so edits that splice AI and human material stand out. */
+    /**
+     * Sliding-window probabilities, shown as a timeline. The model was trained on whole
+     * tracks, so 10 s windows are much noisier than the overall score (on AI songs they
+     * swing between ~0 and 100%); they're informational and don't drive the verdict.
+     */
     val segments: List<Segment>,
     val analysedSeconds: Double,
     val modelName: String,
@@ -73,7 +81,7 @@ class AiMusicDetector(
         onProgress(1f)
         return AnalysisResult(
             aiProbability = overall,
-            verdict = verdictFor(overall, segments),
+            verdict = verdictFor(overall),
             segments = segments,
             analysedSeconds = resampled.size.toDouble() / Fakeprint.SAMPLE_RATE,
             modelName = MODEL_NAME,
@@ -103,16 +111,11 @@ class AiMusicDetector(
         const val HUMAN_THRESHOLD = 0.15f
         private const val SILENCE_RMS = 1e-4
 
-        fun verdictFor(overall: Float, segments: List<Segment>): Verdict {
-            val n = segments.size.coerceAtLeast(1)
-            val aiShare = segments.count { it.aiProbability >= AI_THRESHOLD }.toFloat() / n
-            val humanShare = segments.count { it.aiProbability <= HUMAN_THRESHOLD }.toFloat() / n
-            return when {
-                segments.isNotEmpty() && aiShare >= 0.25f && humanShare >= 0.25f -> Verdict.MIXED
-                overall >= AI_THRESHOLD && (segments.isEmpty() || aiShare >= 0.5f) -> Verdict.LIKELY_AI
-                overall <= HUMAN_THRESHOLD && (segments.isEmpty() || humanShare >= 0.5f) -> Verdict.LIKELY_HUMAN
-                else -> Verdict.INCONCLUSIVE
-            }
+        fun verdictFor(aiProbability: Float): Verdict = when {
+            aiProbability >= AI_THRESHOLD -> Verdict.LIKELY_AI
+            aiProbability >= 0.5f -> Verdict.POSSIBLY_AI
+            aiProbability > HUMAN_THRESHOLD -> Verdict.INCONCLUSIVE
+            else -> Verdict.LIKELY_HUMAN
         }
 
         private fun rms(x: FloatArray): Double {

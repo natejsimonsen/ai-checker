@@ -50,6 +50,30 @@ jobs:
             app/build/outputs/apk/debug/*.apk
             app/build/outputs/apk/release/*.apk
 
+  # MediaCodec decoding + detector on a real Android runtime.
+  instrumented:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run instrumented tests on an emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: ./gradlew :app:connectedDebugAndroidTest --stacktrace
+
   # Runs the on-device pipeline (with ffmpeg standing in for MediaCodec) on real
   # Spotify previews, proving the embed scraping still works end to end.
   spotify-smoke:
@@ -66,12 +90,14 @@ jobs:
       - name: Analyse Spotify previews
         env:
           LINKS: ${{ github.event.inputs.links }}
+          # Ad-hoc links from "Run workflow" are only reported, not asserted.
+          EXPECT: ${{ github.event.inputs.links && '--report' || '--expect-human' }}
         run: |
           if [ -z "$LINKS" ]; then
             # Well-known human-made recordings: expected to score low.
             LINKS="https://open.spotify.com/track/4PTG3Z6ehGkBFwjybzWkR8 https://open.spotify.com/track/003vvx7Niy0yvhvHt4a68B https://open.spotify.com/track/0VjIjW4GlUZAMYd2vXMi3b https://open.spotify.com/track/7qiZfU4dY1lWllzX7mPBI3"
           fi
-          ./gradlew -q :core:run --args="$LINKS"
+          ./gradlew -q :core:run --args="${EXPECT:---expect-human} $LINKS"
       # Positive controls: AI songs (Suno + Udio) from the SONICS dataset, checked as-is and as a
       # 30 s 96 kbps re-encode that mimics a Spotify preview. SONICS was part of the upstream
       # model's training data, so this guards the pipeline, not the model's generalisation.
@@ -87,4 +113,8 @@ jobs:
           for f in ai/*; do
             ffmpeg -v error -ss 20 -t 30 -i "$f" -ar 44100 -b:a 96k "ai/preview-$(basename "${f%.*}").mp3"
           done
-          ./gradlew -q :core:run --args="$(ls "$PWD"/ai/* | tr '\n' ' ')"
+          # Full-length AI songs must score at least Possibly AI; preview-quality re-encodes are reported only
+          # (Udio's fingerprint in particular fades at 96 kbps / 30 s).
+          full=$(ls "$PWD"/ai/fake_* | tr '\n' ' ')
+          previews=$(ls "$PWD"/ai/preview-* | tr '\n' ' ')
+          ./gradlew -q :core:run --args="--expect-ai $full --report $previews"

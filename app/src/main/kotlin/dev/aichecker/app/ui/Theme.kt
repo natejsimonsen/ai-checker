@@ -41,7 +41,7 @@ fun AiCheckerTheme(content: @Composable () -> Unit) {
 /** Verdict colours stay fixed (not dynamic) so red/green keep their meaning. */
 fun verdictColor(verdict: Verdict, dark: Boolean): Color = when (verdict) {
     Verdict.LIKELY_HUMAN -> if (dark) Color(0xFF6DD58C) else Color(0xFF1E8E3E)
-    Verdict.MIXED -> if (dark) Color(0xFFFFC857) else Color(0xFFB06000)
+    Verdict.POSSIBLY_AI -> if (dark) Color(0xFFFFC857) else Color(0xFFB06000)
     Verdict.LIKELY_AI -> if (dark) Color(0xFFFF8A80) else Color(0xFFC5221F)
     Verdict.INCONCLUSIVE -> if (dark) Color(0xFFB0B3B8) else Color(0xFF5F6368)
 }
@@ -51,7 +51,7 @@ fun probabilityColor(p: Float, dark: Boolean): Color = verdictColor(
     when {
         p >= 0.85f -> Verdict.LIKELY_AI
         p <= 0.15f -> Verdict.LIKELY_HUMAN
-        else -> Verdict.MIXED
+        else -> Verdict.POSSIBLY_AI
     },
     dark,
 )
@@ -59,7 +59,7 @@ fun probabilityColor(p: Float, dark: Boolean): Color = verdictColor(
 val Verdict.label: String
     get() = when (this) {
         Verdict.LIKELY_HUMAN -> "Likely human"
-        Verdict.MIXED -> "Mixed / hybrid"
+        Verdict.POSSIBLY_AI -> "Possibly AI / hybrid"
         Verdict.LIKELY_AI -> "Likely AI"
         Verdict.INCONCLUSIVE -> "Inconclusive"
     }
@@ -68,8 +68,8 @@ val Verdict.explanation: String
     get() = when (this) {
         Verdict.LIKELY_HUMAN ->
             "No sign of the spectral fingerprint that AI music generators leave behind."
-        Verdict.MIXED ->
-            "Some sections carry the AI fingerprint and others don't. That can mean AI parts mixed with human-made ones (stems, vocals, samples) or a remix."
+        Verdict.POSSIBLY_AI ->
+            "Part of the AI fingerprint is there, but not clearly. Common for tracks that mix AI parts (stems, vocals) with human-made ones, or AI audio that was heavily processed."
         Verdict.LIKELY_AI ->
             "The spectrum shows the regular peak pattern produced by the neural vocoders inside generators like Suno and Udio."
         Verdict.INCONCLUSIVE ->

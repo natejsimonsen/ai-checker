@@ -3,6 +3,7 @@ package dev.aichecker.core.cli
 import dev.aichecker.core.detect.AiMusicDetector
 import dev.aichecker.core.detect.AnalysisResult
 import dev.aichecker.core.detect.PcmAudio
+import dev.aichecker.core.detect.Verdict
 import dev.aichecker.core.spotify.SpotifyClient
 import java.io.File
 import java.nio.ByteBuffer
@@ -15,6 +16,10 @@ import kotlin.system.exitProcess
  *
  *   ./gradlew :core:run --args="https://open.spotify.com/track/..."
  *   ./gradlew :core:run --args="/path/to/song.mp3"
+ *
+ * `--expect-ai` / `--expect-human` before inputs turns them into regression checks: the run
+ * fails unless each scores at least Possibly AI (>= 50%) / Likely human (<= 15%).
+ * `--report` switches back to report-only.
  */
 fun main(args: Array<String>) {
     if (args.isEmpty()) {
@@ -24,7 +29,13 @@ fun main(args: Array<String>) {
     val detector = AiMusicDetector()
     val spotify = SpotifyClient()
     var failures = 0
+    var expect: Set<Verdict>? = null
     for (arg in args) {
+        when (arg) {
+            "--expect-ai" -> { expect = setOf(Verdict.POSSIBLY_AI, Verdict.LIKELY_AI); continue }
+            "--expect-human" -> { expect = setOf(Verdict.LIKELY_HUMAN); continue }
+            "--report" -> { expect = null; continue }
+        }
         try {
             val file = File(arg)
             val (label, audio) = if (file.isFile) {
@@ -37,7 +48,12 @@ fun main(args: Array<String>) {
                 tmp.writeBytes(spotify.downloadPreview(preview))
                 "${track.artistLine} - ${track.title} [$id]" to decodeWithFfmpeg(tmp)
             }
-            println(report(label, detector.analyze(audio)))
+            val result = detector.analyze(audio)
+            println(report(label, result))
+            if (expect != null && result.verdict !in expect) {
+                failures++
+                println("  EXPECTATION FAILED: wanted one of $expect")
+            }
         } catch (e: Exception) {
             failures++
             println("ERROR $arg: ${e.message}")

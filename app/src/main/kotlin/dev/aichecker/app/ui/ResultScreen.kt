@@ -109,7 +109,7 @@ fun ResultScreen(report: Report, onBack: () -> Unit) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Section by section", style = MaterialTheme.typography.titleSmall)
                         Text(
-                            "Each bar is a 10-second window. Taller and redder means more AI-like.",
+                            "Each bar scores a 10-second window on its own. Short windows are much noisier than the overall score, so judge by the score above, not single bars.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
