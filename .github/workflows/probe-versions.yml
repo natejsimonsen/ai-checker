@@ -1,0 +1,13 @@
+name: probe-versions
+on: [push, workflow_dispatch]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print latest Google Maven versions
+        run: |
+          for p in com/android/tools/build/gradle androidx/compose/compose-bom androidx/activity/activity-compose androidx/core/core-ktx androidx/lifecycle/lifecycle-runtime-ktx androidx/lifecycle/lifecycle-viewmodel-compose androidx/navigation/navigation-compose androidx/datastore/datastore-preferences; do
+            echo "== $p"; curl -sL https://dl.google.com/dl/android/maven2/$p/maven-metadata.xml | grep -oE '<version>[^<]+' | sed 's/<version>//' | tail -6 | tr '\n' ' '; echo
+          done
+          echo "== sdk"; ls $ANDROID_HOME/platforms $ANDROID_HOME/build-tools || true
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --list 2>/dev/null | grep -E "platforms;android-|build-tools;" | tail -8
